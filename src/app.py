@@ -1,3 +1,5 @@
+from fastapi import Path
+
 """
 High School Management System API
 

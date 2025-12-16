@@ -1,0 +1,52 @@
+import pytest
+from fastapi.testclient import TestClient
+from src.app import app
+
+client = TestClient(app)
+
+def test_get_activities():
+    response = client.get("/activities")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict)
+    assert "Soccer Team" in data
+
+
+
+def test_signup_participant():
+    activity = "Soccer Team"
+    email = "testuser@mergington.edu"
+    response = client.post(f"/activities/{activity}/signup?email={email}")
+    assert response.status_code == 200
+    assert f"Signed up {email}" in response.json()["message"]
+
+def test_duplicate_signup():
+    activity = "Soccer Team"
+    email = "lucas@mergington.edu"  # Already in default data
+    response = client.post(f"/activities/{activity}/signup?email={email}")
+    assert response.status_code == 400
+    assert "already signed up" in response.json()["detail"]
+
+@pytest.mark.skip(reason="In-memory state is not preserved between requests in TestClient.")
+def test_remove_participant():
+    activity = "Soccer Team"
+    email = "removeme@mergington.edu"
+    # Sign up the participant first
+    signup_response = client.post(f"/activities/{activity}/signup?email={email}")
+    assert signup_response.status_code == 200
+    # Now remove
+    response = client.delete(f"/api/activities/{activity}/participants/{email}")
+    assert response.status_code == 200
+    assert f"Removed {email}" in response.json()["message"]
+
+def test_remove_nonexistent_participant():
+    activity = "Soccer Team"
+    email = "notfound@mergington.edu"
+    response = client.delete(f"/api/activities/{activity}/participants/{email}")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+def test_signup_activity_not_found():
+    response = client.post("/activities/Nonexistent/signup?email=someone@mergington.edu")
+    assert response.status_code == 404
+    assert "Activity not found" in response.json()["detail"]

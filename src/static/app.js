@@ -37,18 +37,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const participantsList = document.createElement("ul");
         participantsList.className = "participants-list";
-        if (details.participants && details.participants.length > 0) {
-          details.participants.forEach((email) => {
-            const li = document.createElement("li");
-            li.textContent = email;
+          if (details.participants && details.participants.length > 0) {
+            details.participants.forEach(email => {
+              const li = document.createElement('li');
+              // Email text
+              const emailSpan = document.createElement('span');
+              emailSpan.textContent = email;
+              li.appendChild(emailSpan);
+
+              // Delete icon
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'delete-participant';
+              deleteBtn.title = 'Remove participant';
+              deleteBtn.innerHTML = '&#128465;'; // Trash can icon
+              deleteBtn.addEventListener('click', () => {
+                unregisterParticipant(name, email);
+              });
+              li.appendChild(deleteBtn);
+
+              participantsList.appendChild(li);
+            });
+          } else {
+            const li = document.createElement('li');
+            li.textContent = 'No participants yet';
             participantsList.appendChild(li);
-          });
-        } else {
-          const li = document.createElement("li");
-          li.textContent = "No participants yet";
-          participantsList.appendChild(li);
-        }
+          }
         participantsSection.appendChild(participantsList);
+  // Unregister participant from activity
+  function unregisterParticipant(activityName, email) {
+    if (!confirm(`Remove ${email} from ${activityName}?`)) return;
+    fetch(`/api/activities/${encodeURIComponent(activityName)}/participants/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+    })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => { throw new Error(data.detail || 'Failed to remove participant'); });
+        }
+        // Refresh activities
+        loadActivities();
+      })
+      .catch(err => {
+        alert('Error: ' + err.message);
+      });
+  }
 
         activityCard.appendChild(participantsSection);
 
@@ -87,6 +118,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities to show new participant
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
